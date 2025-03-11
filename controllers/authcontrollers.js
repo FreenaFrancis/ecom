@@ -203,4 +203,22 @@ const loginUser = async (req, res) => {
 };
 
 
-module.exports = { registerUser, loginUser };
+const getUser = async (req, res) => {
+  try {
+    const { id, role } = req.user; // Extract user ID and role from request
+
+    let user;
+    if (role === "admin") user = await Admin.findById(id).select("-password");
+    else if (role === "seller") user = await Seller.findById(id).select("-password");
+    else if (role === "customer") user = await Customer.findById(id).select("-password");
+    else return res.status(400).json({ message: "Invalid role" });
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+module.exports = { registerUser, loginUser,getUser };

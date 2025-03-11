@@ -7,9 +7,9 @@ const verifyToken = require('../middleware/authMiddleware');
 const authorizeRoles = require('../middleware/roleMiddleware');
 
 router.post('/addtocart', verifyToken,  add_to_cart);
-router.get('/removefromcart/:id', verifyToken, removeFromCart);
+router.delete('/removefromcart/:cartid', verifyToken, removeFromCart);
 router.get('/getcart/:userid', verifyToken,authorizeRoles('customer'), getCart);
-router.put('/quantityinc/:cartid', verifyToken,authorizeRoles('customer'), quantity_inc);
-router.put('/quantitydec/:cartid', verifyToken,authorizeRoles('customer'), quantity_dec);
+router.put('/quantityinc/:cartId', verifyToken,authorizeRoles('customer'), quantity_inc);
+router.put('/quantitydec/:cartId', verifyToken,authorizeRoles('customer'), quantity_dec);
 
 module.exports = router;

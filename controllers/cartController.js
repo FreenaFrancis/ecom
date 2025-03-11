@@ -49,13 +49,14 @@ const add_to_cart = async (req, res) => {
 
 
 
+
+
 const getCart = async (req, res) => {
-    const commissionPercentage = 5; // Commission percentage
+    const commissionPercentage = 5;
 
     try {
-        const userId = req.user.id; // Ensure this comes from the verified token
+        const userId = req.user.id;
 
-        // Aggregate cart products with product details
         const cartProducts = await cartModel.aggregate([
             {
                 $match: {
@@ -72,18 +73,25 @@ const getCart = async (req, res) => {
             },
         ]);
 
-        if (!cartProducts.length) {
-            return res.status(404).json({ success: false, message: 'Cart is empty' });
+        if (!cartProducts || cartProducts.length === 0) {
+            return res.status(200).json({
+                success: true,
+                totalItems: 0,
+                totalBuyableItems: 0,
+                totalPrice: 0,
+                groupedBySeller: [],
+                outOfStockProducts: [],
+            });
         }
 
         let buyProductItemCount = 0;
         let totalPrice = 0;
         let cartProductCount = 0;
 
-        // Process out-of-stock and in-stock products
         const outOfStockProducts = cartProducts.filter(
             (p) => p.products[0]?.stock < p.quantity
         );
+
         outOfStockProducts.forEach((product) => {
             cartProductCount += product.quantity;
         });
@@ -100,13 +108,11 @@ const getCart = async (req, res) => {
             cartProductCount += quantity;
             buyProductItemCount += quantity;
 
-            // Price calculations
             const discountedPrice =
                 discount > 0 ? price - Math.floor((price * discount) / 100) : price;
             const finalPrice = discountedPrice - Math.floor((discountedPrice * commissionPercentage) / 100);
             totalPrice += finalPrice * quantity;
 
-            // Group products by seller
             const sellerIndex = groupedBySeller.findIndex(
                 (group) => group.sellerId === sellerId.toString()
             );
@@ -153,79 +159,40 @@ const removeFromCart = async (req, res) => {
         console.log(error.message)
     }
 }
+
 const quantity_inc = async (req, res) => {
-    const { cartid } = req.params; // Correct parameter name
+    const { cartId } = req.params; // Ensure correct parameter name
     try {
-        // Find the cart item by its ID
-        const product = await cartModel.findById(cartid);
-
-        // Check if the product exists
+        const product = await cartModel.findById(cartId);
         if (!product) {
-            return res.status(404).json({ success: false, message: 'Cart item not found' });
+            return res.status(404).json({ success: false, message: "Cart item not found" });
         }
-
-        const { quantity } = product;
-
-        // Update the quantity
-        await cartModel.findByIdAndUpdate(cartid, { quantity: quantity + 1 });
-
-        res.status(200).json({ success: true, message: 'Quantity incremented successfully' });
+        product.quantity += 1;
+        await product.save();
+        res.status(200).json({ success: true, message: "Quantity incremented successfully", product });
     } catch (error) {
-        console.error('Error in quantity_inc:', error.message);
-        res.status(500).json({ success: false, message: 'Internal server error' });
+        console.error("Error in quantity_inc:", error.message);
+        res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
+// Decrement Quantity
 const quantity_dec = async (req, res) => {
-    const { cartid } = req.params; // Use consistent parameter naming
+    const { cartId } = req.params;
     try {
-        // Fetch the product from the cart
-        const product = await cartModel.findById(cartid);
-
-        // Check if the product exists
+        const product = await cartModel.findById(cartId);
         if (!product) {
-            return res.status(404).json({ success: false, message: 'Cart item not found' });
+            return res.status(404).json({ success: false, message: "Cart item not found" });
         }
-
-        const { quantity } = product;
-
-        // Ensure quantity does not drop below 0
-        if (quantity <= 1) {
-            return res.status(400).json({ success: false, message: 'Quantity cannot be less than 1' });
+        if (product.quantity <= 1) {
+            return res.status(400).json({ success: false, message: "Quantity cannot be less than 1" });
         }
-
-        // Update the product's quantity
-        await cartModel.findByIdAndUpdate(cartid, { quantity: quantity - 1 });
-
-        res.status(200).json({ success: true, message: 'Quantity decremented successfully' });
+        product.quantity -= 1;
+        await product.save();
+        res.status(200).json({ success: true, message: "Quantity decremented successfully", product });
     } catch (error) {
-        console.error('Error in quantity_dec:', error.message);
-        res.status(500).json({ success: false, message: 'Internal server error' });
+        console.error("Error in quantity_dec:", error.message);
+        res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
-
-
-// add_wishlist = async (req, res) => {
-//     const {
-//         slug
-//     } = req.body
-//     try {
-//         const product = await wishlistModel.findOne({
-//             slug
-//         })
-//         if (product) {
-//             responseReturn(res, 404, {
-//                 error: 'Allready added'
-//             })
-//         } else {
-//             await wishlistModel.create(req.body)
-//             responseReturn(res, 201, {
-//                 message: 'add to wishlist success'
-//             })
-//         }
-//     } catch (error) {
-//         console.log(error.message)
-//     }
-// }
-
 module.exports={add_to_cart,getCart,removeFromCart,quantity_dec,quantity_inc}
